@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learning C++ Exception Handling Vulnerabilities from a CTF Task</title>
+    <style>
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-code: #0f0f23;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --accent: #00d9ff;
+            --accent-green: #00ff88;
+            --accent-red: #ff4757;
+            --accent-yellow: #ffa502;
+            --accent-purple: #a29bfe;
+            --border: #2d3436;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        h1 {
+            color: var(--accent);
+            font-size: 2.2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .toc {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .toc h3 {
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+
+        .toc ul {
+            list-style: none;
+        }
+
+        .toc li {
+            margin: 0.5rem 0;
+        }
+
+        .toc a {
+            color: var(--accent-purple);
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            text-decoration: underline;
+        }
+
+        h2 {
+            color: var(--accent-green);
+            font-size: 1.6rem;
+            margin: 2.5rem 0 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        h3 {
+            color: var(--accent-purple);
+            font-size: 1.3rem;
+            margin: 1.5rem 0 1rem;
+        }
+
+        h4 {
+            color: var(--accent-yellow);
+            font-size: 1.1rem;
+            margin: 1rem 0 0.5rem;
+        }
+
+        p {
+            margin-bottom: 1rem;
+        }
+
+        .bilingual {
+            background: rgba(0, 217, 255, 0.05);
+            border-left: 3px solid var(--accent);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .bilingual .chinese {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .bilingual .english {
+            color: var(--text-primary);
+        }
+
+        code {
+            background: var(--bg-code);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9em;
+            color: var(--accent);
+        }
+
+        pre {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+            position: relative;
+        }
+
+        pre::before {
+            content: attr(data-lang);
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: var(--accent);
+            color: var(--bg-primary);
+            padding: 0.2rem 0.5rem;
+            font-size: 0.75rem;
+            border-radius: 0 8px 0 8px;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+            color: var(--text-primary);
+        }
+
+        .keyword {
+            color: #ff79c6;
+        }
+
+        .string {
+            color: #f1fa8c;
+        }
+
+        .comment {
+            color: #6272a4;
+        }
+
+        .function {
+            color: #50fa7b;
+        }
+
+        .number {
+            color: #bd93f9;
+        }
+
+        .image-container {
+            margin: 1.5rem 0;
+            text-align: center;
+        }
+
+        .image-container img {
+            max-width: 100%;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .image-caption {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+            border-left: 4px solid;
+        }
+
+        .alert-key {
+            background: rgba(255, 71, 87, 0.1);
+            border-color: var(--accent-red);
+        }
+
+        .alert-info {
+            background: rgba(0, 217, 255, 0.1);
+            border-color: var(--accent);
+        }
+
+        .alert-success {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: var(--accent-green);
+        }
+
+        .alert-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        ul,
+        ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        .flow-diagram {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            font-family: monospace;
+            white-space: pre;
+            overflow-x: auto;
+            text-align: center;
+        }
+
+        .highlight {
+            color: var(--accent-yellow);
+            font-weight: 600;
+        }
+
+        .highlight-red {
+            color: var(--accent-red);
+            font-weight: 600;
+        }
+
+        .highlight-green {
+            color: var(--accent-green);
+            font-weight: 600;
+        }
+
+        .source {
+            margin-top: 3rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .source a {
+            color: var(--accent);
+        }
+
+        .screenshot-section {
+            margin: 2rem 0;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+        }
+
+        .screenshot-section h4 {
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔓 Learning C++ Exception Handling Vulnerabilities from a CTF Task</h1>
+            <p class="subtitle">从一道题目来学习C++异常处理机制漏洞 #PWN</p>
+            <p class="subtitle">Original Author: Notfd404 | Translated for CTF Study</p>
+        </div>
+
+        <div class="toc">
+            <h3>📑 Table of Contents / 目录</h3>
+            <ul>
+                <li><a href="#preface">Preface / 前言</a></li>
+                <li><a href="#mechanism">C++ Exception Handling Mechanism / C++异常处理机制介绍</a></li>
+                <li><a href="#example">An Example / 举个栗子</a></li>
+                <li><a href="#pwn-example">PWN Example / PWN栗子</a></li>
+                <li><a href="#practical">Practical Verification / 实战检验</a></li>
+            </ul>
+        </div>
+
+        <!-- PREFACE -->
+        <h2 id="preface">Preface / 前言</h2>
+
+        <div class="bilingual">
+            <p class="chinese">该漏洞来源于C++中的try catch语法。</p>
+            <p class="english">This vulnerability originates from the <code>try-catch</code> syntax in C++.</p>
+        </div>
+
+        <!-- MECHANISM INTRODUCTION -->
+        <h2 id="mechanism">C++ Exception Handling Mechanism / C++异常处理机制介绍</h2>
+
+        <div class="bilingual">
+            <p class="chinese">C++ 里的 try-catch 本质上是"异常传播与捕获"机制：</p>
+            <p class="english">Try-catch in C++ is essentially an <strong>"exception propagation and capture"</strong>
+                mechanism:</p>
+        </div>
+
+        <div class="bilingual">
+            <p class="chinese">当 throw 发生时，程序大致会做这么几件事：</p>
+            <p class="english">When a <code>throw</code> occurs, the program roughly does the following:</p>
+        </div>
+
+        <ul>
+            <li><strong>寻找合适的 catch / Search for a matching catch:</strong>
+                <div class="bilingual">
+                    <p class="chinese">抛出异常后，从当前函数开始寻找匹配的 catch。如果没有，则向上遍历调用栈（父函数、祖父函数……），直到找到能处理该类型的 catch。这就是 Stack
+                        Unwinding（栈回溯）。如果最后都找不到，用 std::terminate()，其默认行为是 abort。</p>
+                    <p class="english">After throwing an exception, start from the current function looking for a
+                        matching catch. If none found, traverse upward through the call stack (parent function,
+                        grandparent function...) until finding a catch that can handle that type. This is <span
+                            class="highlight">Stack Unwinding</span>. If ultimately none is found, call
+                        <code>std::terminate()</code>, whose default behavior is abort.</p>
+                </div>
+            </li>
+            <li><strong>转移控制到 catch handler / Transfer control to catch handler:</strong>
+                <div class="bilingual">
+                    <p class="chinese">一旦找到匹配的 handler，控制流跳转到对应的 catch 块。</p>
+                    <p class="english">Once a matching handler is found, control flow jumps to the corresponding catch
+                        block.</p>
+                </div>
+            </li>
+            <li><strong>恢复执行 / Resume execution:</strong>
+                <div class="bilingual">
+                    <p class="chinese">异常处理完毕后，系统会尝试恢复执行，一般会继续执行 try-catch 块后面的代码。</p>
+                    <p class="english">After exception handling is complete, the system attempts to resume execution,
+                        generally continuing with the code after the try-catch block.</p>
+                </div>
+            </li>
+        </ul>
+
+        <h3>Minimum Compilable Syntax / 最小可编译语法：</h3>
+
+        <pre data-lang="cpp"><code><span class="keyword">try</span> {
+    <span class="comment">// 可能抛出异常的语句</span>
+    <span class="comment">// Statements that might throw exceptions</span>
+    <span class="keyword">throw</span> 表达式;
+    <span class="comment">// 表达式可以是任意类型 (int, std::string, ...)</span>
+}
+<span class="keyword">catch</span> (<span class="keyword">const</span> 异常类型1& e1) {
+    <span class="comment">// Handle exception type 1</span>
+}</code></pre>
+
+        <!-- EXAMPLE SECTION -->
+        <h2 id="example">An Example / 举个栗子</h2>
+
+        <h3>Source Code: pwn_input_no_catch</h3>
+
+        <pre data-lang="cpp"><code><span class="comment">// g++-9 -Wall vuln.cpp -o pwn_input_no_catch</span>
+<span class="keyword">#include</span> <span class="string">&lt;stdio.h&gt;</span>
+<span class="keyword">#include</span> <span class="string">&lt;stdlib.h&gt;</span>
+<span class="keyword">#include</span> <span class="string">&lt;unistd.h&gt;</span>
+
+<span class="keyword">class</span> <span class="function">foo</span> {
+<span class="keyword">public</span>:
+    <span class="keyword">char</span> buf[<span class="number">0x10</span>];
+};
+
+<span class="keyword">void</span> <span class="function">input</span>(foo *f) {
+    read(<span class="number">0</span>, f->buf, <span class="number">0x100</span>);  <span class="comment">// Buffer overflow!</span>
+    <span class="keyword">throw</span> <span class="string">"Exploited!"</span>;
+}
+
+<span class="keyword">void</span> <span class="function">backdoor</span>() {
+    <span class="keyword">try</span> {
+        system(<span class="string">"/bin/sh"</span>);
+    } <span class="keyword">catch</span>(<span class="keyword">const</span> <span class="keyword">char</span>* e) {
+        printf(<span class="string">"Caught: %s\n"</span>, e);
+    }
+}
+
+<span class="keyword">int</span> <span class="function">main</span>() {
+    foo f;
+    <span class="keyword">try</span> {
+        input(&f);
+    } <span class="keyword">catch</span>(...) {
+        puts(<span class="string">"Exception caught in main"</span>);
+    }
+    <span class="keyword">return</span> <span class="number">0</span>;
+}</code></pre>
+
+        <h3>Source Code: pwn_input_catch</h3>
+
+        <pre data-lang="cpp"><code><span class="comment">// g++-9 -Wall vuln2.cpp -o pwn_input_catch</span>
+<span class="keyword">#include</span> <span class="string">&lt;stdio.h&gt;</span>
+<span class="keyword">#include</span> <span class="string">&lt;stdlib.h&gt;</span>
+<span class="keyword">#include</span> <span class="string">&lt;unistd.h&gt;</span>
+
+<span class="keyword">class</span> <span class="function">foo</span> {
+<span class="keyword">public</span>:
+    <span class="keyword">char</span> buf[<span class="number">0x10</span>];
+};</code></pre>
+
+        <div class="bilingual">
+            <p class="chinese">这时候，试运行程序，程序的走向根据输入的不同会有三种可能性：</p>
+            <p class="english">At this point, when trial running the program, there are <strong>three
+                    possibilities</strong> for program flow depending on input:</p>
+        </div>
+
+        <ol>
+            <li>
+                <div class="bilingual">
+                    <p class="chinese">程序正常运行并正常退出</p>
+                    <p class="english">Program runs normally and exits normally</p>
+                </div>
+            </li>
+            <li>
+                <div class="bilingual">
+                    <p class="chinese">程序抛出异常，但是在input函数中就被捕获</p>
+                    <p class="english">Program throws exception, but it's caught in the input function</p>
+                </div>
+            </li>
+            <li>
+                <div class="bilingual">
+                    <p class="chinese">程序抛出异常，但是在input函数中没有相对应的catch，那么程序流的走向：</p>
+                    <p class="english">Program throws exception, but there's no corresponding catch in input function.
+                        Program flow:</p>
+                </div>
+            </li>
+        </ol>
+
+        <div class="flow-diagram">
+            throw in input()
+            ↓
+            No catch in input() → Stack Unwinding begins
+            ↓
+            Search parent (main) for matching catch
+            ↓
+            Found catch(...) in main → Execute catch handler
+            ↓
+            (__cxa_begin_catch → handler code → __cxa_end_catch)
+            ↓
+            Continue after try-catch in main
+        </div>
+
+        <div class="alert alert-key">
+            <div class="alert-title">🚨 KEY VULNERABILITY / 关键漏洞点</div>
+            <div class="bilingual">
+                <p class="chinese">不难看出，当如果程序中途抛出了异常，那么接下来的代码一般是不会执行的（除非这个函数中有catch），而是直接去一层层 unwind，寻找匹配的 catch handler
+                    。</p>
+                <p class="english">It's not hard to see that if the program throws an exception midway, the following
+                    code generally <strong>won't be executed</strong> (unless there's a catch in that function).
+                    Instead, it directly unwinds layer by layer looking for a matching catch handler.</p>
+            </div>
+            <div class="bilingual">
+                <p class="chinese">一般来说 canary 都是在函数即将返回的时候检测的，位于函数代码的最下面。那么，如果我们中间 throw 了异常，就不会往下执行剩余的代码，<span
+                        class="highlight-red">这其中就包含了 canary 的检测</span>。即，我们无视 canary 返回到了某个 catch handler 分支。</p>
+                <p class="english">Generally, the <strong>canary check</strong> happens when the function is about to
+                    return, located at the bottom of the function code. So if we throw an exception in the middle, the
+                    remaining code won't execute - <span class="highlight-red">this includes the canary check!</span>
+                    That is, we bypass the canary and return to some catch handler branch.</p>
+            </div>
+        </div>
+
+        <!-- PWN EXAMPLE -->
+        <h2 id="pwn-example">PWN Example / PWN栗子</h2>
+
+        <div class="bilingual">
+            <p class="chinese">但是有一个问题摆在面前：如何控制handler返回，如何把返回到的handler设置成我们的gadget？</p>
+            <p class="english">But there's one problem: <strong>How do we control where the handler returns to?</strong>
+                How do we set the returned handler to our gadget?</p>
+        </div>
+
+        <div class="bilingual">
+            <p class="chinese">这就是C++异常处理漏洞的关键所在！</p>
+            <p class="english"><span class="highlight">This is the key to the C++ exception handling
+                    vulnerability!</span></p>
+        </div>
+
+        <div class="bilingual">
+            <p class="chinese">接下来的思路是控制handler返回。我们还不明白rbp和ret需要设置成啥，调试看看。</p>
+            <p class="english">The next step is to control the handler return. We don't yet understand what RBP and RET
+                need to be set to - let's debug and see.</p>
+        </div>
+
+        <h3>The Crash Analysis / 死亡姿势分析</h3>
+
+        <div class="bilingual">
+            <p class="chinese">发现死亡姿势为：卡死在 <code>cmp byte ptr [rax], 0x48</code></p>
+            <p class="english">Found the "death posture": Stuck at <code>cmp byte ptr [rax], 0x48</code></p>
+        </div>
+
+        <div class="image-container">
+            <img src="blog_images/blog_part_1_1769235751199.png" alt="Blog Part 1 - Exception Mechanism">
+            <p class="image-caption">Original blog - Exception handling mechanism explanation / 原博客 - 异常处理机制解释</p>
+        </div>
+
+        <div class="bilingual">
+            <p class="chinese">这句汇编：把 RAX 指向的那 1 字节内存内容与常量 0x48 做比较，根据比较结果设置标志位（ZF 等），后面的 je/jne 等条件跳转指令会用到这些标志位。</p>
+            <p class="english">This assembly instruction: Compares the 1-byte memory content pointed to by RAX with the
+                constant 0x48, sets flag bits (ZF, etc.) according to the result. Subsequent conditional jumps like
+                je/jne will use these flags.</p>
+        </div>
+
+        <div class="alert alert-info">
+            <div class="alert-title">💡 KEY INSIGHT</div>
+            <div class="bilingual">
+                <p class="chinese">合理猜测，程序是不是根据这个返回地址值确定上哪找 catch 块呢？因为如果我们不修改这个返回地址的值的话，它的值默认是 main 中 throw 的地址。</p>
+                <p class="english">Reasonable guess: Does the program determine where to find the catch block based on
+                    this return address value? Because if we don't modify this return address, its default value is the
+                    address of the throw in main.</p>
+            </div>
+        </div>
+
+        <div class="image-container">
+            <img src="blog_images/blog_part_2_1769235765191.png" alt="Blog Part 2 - Code Examples">
+            <p class="image-caption">Original blog - Source code examples / 原博客 - 源代码示例</p>
+        </div>
+
+        <h3>The +1 Trick / +1技巧</h3>
+
+        <div class="bilingual">
+            <p class="chinese">我们在backdoor函数中，发现了 catch(char const*) ，就准备ret地址在这里。但还是趋势了！</p>
+            <p class="english">In the backdoor function, we found <code>catch(char const*)</code>, so we prepared the
+                ret address there. But it still crashed!</p>
+        </div>
+
+        <div class="bilingual">
+            <p class="chinese">参考大佬文章，发现需要覆盖ret地址 <span class="highlight">0x401471+1</span> 的地方</p>
+            <p class="english">Referencing expert articles, found that we need to overwrite ret address at <span
+                    class="highlight">address + 1</span></p>
+        </div>
+
+        <div class="alert alert-success">
+            <div class="alert-title">✅ THE +1 RULE</div>
+            <div class="bilingual">
+                <p class="chinese">我们要向ret_addr中写入backdoor的catch（与报错抛出类型相同），上面的try的地址，左开右不精确的地址区间。需要 +1 跳过 endbr64 指令！
+                </p>
+                <p class="english">We need to write to ret_addr the catch of backdoor (same type as the error thrown).
+                    The address needs <strong>+1 to skip the endbr64 instruction!</strong></p>
+            </div>
+        </div>
+
+        <div class="image-container">
+            <img src="blog_images/blog_part_3_1769235776261.png" alt="Blog Part 3 - Assembly Analysis">
+            <p class="image-caption">Original blog - Assembly analysis / 原博客 - 汇编分析</p>
+        </div>
+
+        <h3>RBP Must Be Valid / RBP必须有效</h3>
+
+        <div class="bilingual">
+            <p class="chinese">所以：我们需要在rbp上放一个有意义的地址，可以是bss上面的。</p>
+            <p class="english">So: We need to put a <strong>meaningful address on RBP</strong> - it can be on the .bss
+                section.</p>
+        </div>
+
+        <div class="bilingual">
+            <p class="chinese">正确！</p>
+            <p class="english"><span class="highlight-green">Correct!</span></p>
+        </div>
+
+        <!-- PRACTICAL VERIFICATION -->
+        <h2 id="practical">Practical Verification: Yangcheng Cup 2024 "logger" / 实战检验：羊城杯2024 logger</h2>
+
+        <div class="bilingual">
+            <p class="chinese">一道菜单题目。可以向bss段上东西！</p>
+            <p class="english">A menu-based challenge. We can write things to the .bss segment!</p>
+        </div>
+
+        <div class="bilingual">
+            <p class="chinese">要利用异常处理漏洞，可以把rbp写一个bss地址，咱们system的时候，会从rbp加一个偏移的地方取字符串执行，bss上咱们可以写东西，写/bin/sh就好了！</p>
+            <p class="english">To exploit the exception handling vulnerability: Write a BSS address to RBP. When we call
+                system, it takes the string to execute from RBP + offset. We can write to BSS, so just write
+                <code>/bin/sh</code>!</p>
+        </div>
+
+        <div class="bilingual">
+            <p class="chinese">又经过调试发现，system每次都是执行bss上0x4040a0的字符串的命令，那么我们trace函数刚好可以覆盖到0x4040a0，那么利用思路就很显然了！</p>
+            <p class="english">After debugging, found that system always executes the command string at BSS address
+                0x4040a0. Our trace function can cover 0x4040a0, so the exploitation approach is obvious!</p>
+        </div>
+
+        <h3>Exploit Script / 利用脚本</h3>
+
+        <pre data-lang="python"><code><span class="keyword">from</span> pwn <span class="keyword">import</span> *
+context.arch = <span class="string">'amd64'</span>
+
+<span class="comment"># Address of the catch block in backdoor + 1</span>
+catch_handler_plus_1 = <span class="number">0x401BC2</span> + <span class="number">1</span>
+
+<span class="comment"># Writable BSS area to act as the new stack frame</span>
+bss_stack = <span class="number">0x404020</span> + <span class="number">0x18</span>
+
+<span class="comment"># ... (Menu interaction functions) ...</span>
+
+<span class="comment"># 1. Write '/bin/sh' to BSS</span>
+<span class="keyword">for</span> i <span class="keyword">in</span> range(<span class="number">9</span>):
+    trace(<span class="string">b'/bin/sh\x00'</span>*<span class="number">2</span>, <span class="string">b'n'</span>)
+
+<span class="comment"># 2. Trigger vulnerability and overwrite stack</span>
+<span class="comment"># Overwrite RBP with the BSS address and RIP with the catch handler</span>
+payload = p64(bss_stack + <span class="number">0x10</span>) * <span class="number">15</span> + p64(catch_handler_plus_1)
+warn(payload)
+
+r.interactive()</code></pre>
+
+        <h2>Summary: Exploitation Steps / 总结：利用步骤</h2>
+
+        <div class="alert alert-success">
+            <div class="alert-title">🎯 Complete Exploitation Flow</div>
+            <ol>
+                <li><strong>Trigger buffer overflow</strong> in a function that will throw an exception</li>
+                <li><strong>Overwrite RBP</strong> with a writable address (like .bss)</li>
+                <li><strong>Overwrite return address</strong> with <code>catch_handler_address + 1</code></li>
+                <li>The <strong>+1 skips endbr64</strong> and satisfies unwinder checks</li>
+                <li>Exception is thrown, canary check is <strong>BYPASSED</strong></li>
+                <li>Unwinder finds our "valid" catch handler and jumps there</li>
+                <li><strong>Profit!</strong> 🚀</li>
+            </ol>
+        </div>
+
+        <div class="flow-diagram">
+            ┌─────────────────────────────────────────────────────────────┐
+            │ EXPLOITATION FLOW │
+            ├─────────────────────────────────────────────────────────────┤
+            │ │
+            │ 1. Buffer Overflow → Corrupt Stack │
+            │ ↓ │
+            │ 2. Overwrite: [padding] + [BSS_addr] + [catch_addr+1] │
+            │ ↓ │
+            │ 3. throw exception → Triggers Stack Unwinding │
+            │ ↓ │
+            │ 4. ⚠️ CANARY CHECK SKIPPED! (throw before ret) │
+            │ ↓ │
+            │ 5. Unwinder reads our fake return address │
+            │ ↓ │
+            │ 6. Finds catch handler at (catch_addr+1) │
+            │ ↓ │
+            │ 7. Jumps to catch → Executes our target (win/system) │
+            │ ↓ │
+            │ 8. 🎉 FLAG / SHELL │
+            │ │
+            └─────────────────────────────────────────────────────────────┘
+        </div>
+
+        <div class="source">
+            <p>📖 <strong>Original Source:</strong> <a
+                    href="https://blog.csdn.net/2403_87031746/article/details/155788404" target="_blank">CSDN Blog -
+                    从一道题目来学习C++异常处理机制漏洞</a></p>
+            <p>👤 <strong>Original Author:</strong> Notfd404</p>
+            <p>🔄 <strong>Translated:</strong> For CTF study purposes</p>
+        </div>
+    </div>
+</body>
+
+</html>
